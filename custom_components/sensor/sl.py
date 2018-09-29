@@ -157,23 +157,24 @@ class SLDepartureBoardSensor(Entity):
         # @TODO Enable multiple sensors with same SiteID, to reduce number of API calls.
 
         board = []
-        if not self._data.data['StatusCode']:
+        if self._data.data['StatusCode'] != 0:
             _LOGGER.error("Status code: {}, {}".format(self._data.data['StatusCode'], self._data.data['Message']))
-        for i,traffictype in enumerate(['Metros','Buses','Trains','Trams', 'Ships']):
-            for idx, value in enumerate(self._data.data['ResponseData'][traffictype]):
-                direction = value['JourneyDirection'] or 0
-                displaytime = value['DisplayTime'] or ''
-                destination = value['Destination'] or ''
-                linenumber = value['LineNumber'] or ''
-                
-                if (int(self._data._direction) == 0 or int(direction) == int(self._data._direction)):
-                    if(self._data._lines is None or (linenumber in self._data._lines)):
-                        diff = self.parseDepartureTime(displaytime)
-                        board.append({"line":linenumber,"departure":displaytime,"destination":destination, 'time': diff})
-       
-        self._board = sorted(board, key=lambda k: k['time'])
+        else:
+            for i,traffictype in enumerate(['Metros','Buses','Trains','Trams', 'Ships']):
+                for idx, value in enumerate(self._data.data['ResponseData'][traffictype]):
+                    direction = value['JourneyDirection'] or 0
+                    displaytime = value['DisplayTime'] or ''
+                    destination = value['Destination'] or ''
+                    linenumber = value['LineNumber'] or ''
+                    
+                    if (int(self._data._direction) == 0 or int(direction) == int(self._data._direction)):
+                        if(self._data._lines is None or (linenumber in self._data._lines)):
+                            diff = self.parseDepartureTime(displaytime)
+                            board.append({"line":linenumber,"departure":displaytime,"destination":destination, 'time': diff})
+        
+            self._board = sorted(board, key=lambda k: k['time'])
 
-        _LOGGER.info(self._board)
+        _LOGGER.debug(self._board)
 
             
 class SlDepartureBoardData(object):
@@ -190,7 +191,7 @@ class SlDepartureBoardData(object):
     def update(self, **kwargs):
         """Get the latest data for this site from the API."""
         try:
-            _LOGGER.info("fetching SL Data for '%s'", self._siteid)
+            _LOGGER.debug("fetching SL Data for '%s'", self._siteid)
             url = "https://api.sl.se/api2/realtimedeparturesV4.json?key={}&siteid={}". \
                    format(self._apikey, self._siteid)
 
