@@ -20,38 +20,43 @@ _LOGGER = logging.getLogger(__name__)
 
 CONF_RI4_KEY = 'ri4key'
 CONF_SITEID = 'siteid'
+CONF_DEPARTURES = 'departures'
 CONF_LINES = 'lines'
 CONF_NAME = 'name'
 CONF_DIRECTION = 'direction'
+CONF_ENABLE_SENSOR = 'sensor'
 
-UPDATE_FREQUENCY = timedelta(seconds=60)
-FORCED_UPDATE_FREQUENCY = timedelta(seconds=5)
+MIN_UPDATE_FREQUENCY = timedelta(seconds=60)
 
 USER_AGENT = "Home Assistant SL Sensor"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_RI4_KEY): cv.string,   
     vol.Required(CONF_SITEID): cv.string,
-    vol.Optional(CONF_LINES): cv.string,
-    vol.Optional(CONF_NAME): cv.string,
-    vol.Optional(CONF_DIRECTION) : cv.string
+    vol.Optional(CONF_DEPARTURES): [{
+            vol.Optional(CONF_LINES): cv.string,
+            vol.Optional(CONF_NAME): cv.string,
+            vol.Optional(CONF_DIRECTION) : cv.string,
+            vol.Optional(CONF_ENABLE_SENSOR) : cv.string
+    }]
 })
 
 
-async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
-    """Setup the sensors.
-    
-       right now only one, but later there should probably be another sensor for deviations at the same site
-    """
-
-    data = SlDepartureBoardData(
-        config.get(CONF_RI4_KEY),
-        config.get(CONF_SITEID),
-        config.get(CONF_LINES),
-        config.get(CONF_DIRECTION)
-    )
-
+def setup_platform(hass, config, add_entities, discovery_info=None):
+    """Setup the sensors."""
     sensors = []
+    # Each SiteID requires one API call, but each call can contain multiple lines/names/directions.
+    for site in config.get(CONF_SITEID):
+        sensors.append(
+            SLDepartureBoardSensor(
+                hass,
+                SlDepartureBoardData(
+                    config.get(CONF_RI4_KEY),
+                    site,
+                    site.get(CONF_DEPARTURES)
+                )
+            )
+        )
     sensors.append(
         SLDepartureBoardSensor(
             hass,
@@ -68,6 +73,7 @@ class SLDepartureBoardSensor(Entity):
 
     def __init__(self, hass, data, siteid, name):
         """Initialize"""
+        import requests
         self._hass = hass
         self._sensor = 'sl'
         self._siteid = siteid
@@ -185,7 +191,7 @@ class SlDepartureBoardData(object):
         self._direction = direction or 0
         self.data = {}
 
-    @Throttle(UPDATE_FREQUENCY, FORCED_UPDATE_FREQUENCY)
+    @Throttle(MIN_UPDATE_FREQUENCY)
     def update(self, **kwargs):
         """Get the latest data for this site from the API."""
         try:
