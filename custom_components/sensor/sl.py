@@ -68,6 +68,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
         )
     )
     add_devices(sensors)
+    hass.states.set('sensor.sl_active', True)
 
 class SLDepartureBoardSensor(Entity):
     """Department board for one SL site."""
@@ -189,6 +190,8 @@ class SlDepartureBoardData(object):
     @Throttle(UPDATE_FREQUENCY, FORCED_UPDATE_FREQUENCY)
     def update(self, **kwargs):
         """Get the latest data for this site from the API."""
+        if self.hass.state.get('sensor.sl_active'):
+            _LOGGER.error('SL Sensor active')
         try:
             _LOGGER.debug("fetching SL Data for '%s'", self._siteid)
             url = "https://api.sl.se/api2/realtimedeparturesV4.json?key={}&siteid={}". \
