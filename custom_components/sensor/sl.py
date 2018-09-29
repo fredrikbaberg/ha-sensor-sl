@@ -51,7 +51,6 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     
        right now only one, but later there should probably be another sensor for deviations at the same site
     """
-    import requests
 
     data = SlDepartureBoardData(
         config.get(CONF_RI4_KEY),
@@ -180,6 +179,7 @@ class SlDepartureBoardData(object):
     """ Class for retrieving API data """
     def __init__(self, apikey, siteid, lines, direction):
         """Initialize the data object."""
+        import requests
         self._apikey = apikey
         self._siteid = siteid
         self._lines = lines 
