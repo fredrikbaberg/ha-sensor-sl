@@ -37,13 +37,11 @@ FORCED_UPDATE_FREQUENCY = timedelta(seconds=5)
 
 USER_AGENT = "Home Assistant SL Sensor"
 
-DEFAULT_NAME = 'SL Sensor'
-
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_RI4_KEY): cv.string,   
     vol.Required(CONF_SITEID): cv.string,
     vol.Optional(CONF_LINES): cv.string,
-    vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
+    vol.Optional(CONF_NAME): cv.string,
     vol.Optional(CONF_DIRECTION) : cv.string
 })
 
