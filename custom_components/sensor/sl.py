@@ -6,24 +6,23 @@ Simple service for SL (Storstockholms Lokaltrafik)
 
 """
 import datetime
-from datetime import timedelta
 import logging
-
-import voluptuous as vol
-import requests
+from datetime import timedelta
 
 import homeassistant.helpers.config_validation as cv
+import requests
+import voluptuous as vol
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.event import (
-    async_track_point_in_utc_time, async_track_utc_time_change)
+from homeassistant.helpers.event import (async_track_point_in_utc_time,
+                                         async_track_utc_time_change)
+from homeassistant.util import Throttle
 from homeassistant.util import dt as dt_util
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
-import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
-from homeassistant.util import Throttle
+REQUIREMENTS = []
+
+__version__ = '0.0.2'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,13 +37,14 @@ FORCED_UPDATE_FREQUENCY = timedelta(seconds=5)
 
 USER_AGENT = "Home Assistant SL Sensor"
 
+DEFAULT_NAME = 'SL Sensor'
+
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_RI4_KEY): cv.string,   
     vol.Required(CONF_SITEID): cv.string,
     vol.Optional(CONF_LINES): cv.string,
-    vol.Optional(CONF_NAME): cv.string,
+    vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
     vol.Optional(CONF_DIRECTION) : cv.string
-
 })
 
 
@@ -208,4 +208,3 @@ class SlDepartureBoardData(object):
             _LOGGER.error("failed fetching SL Data for '%s'"
                           "(HTTP Status_code = %d)", self._siteid,
                           req.status_code)        
-
