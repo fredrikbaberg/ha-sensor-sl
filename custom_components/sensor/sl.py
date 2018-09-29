@@ -1,9 +1,6 @@
 """
 Simple service for SL (Storstockholms Lokaltrafik)
 
-@TODO Byt till ResRobot - Stolptidtabeller 2 (?) - tappar realtid för tunnelbanan...
-
-
 """
 import datetime
 import logging
@@ -14,11 +11,6 @@ import voluptuous as vol
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
-
-# from homeassistant.helpers.aiohttp_client import async_get_clientsession
-# from homeassistant.helpers.event import (async_track_point_in_utc_time,
-#                                          async_track_utc_time_change)
-# from homeassistant.util import dt as dt_util
 
 REQUIREMENTS = ['requests']
 
@@ -46,7 +38,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
-def setup_platform(hass, config, add_devices, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     """Setup the sensors.
     
        right now only one, but later there should probably be another sensor for deviations at the same site
@@ -62,19 +54,21 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     sensors = []
     sensors.append(
         SLDepartureBoardSensor(
+            hass,
             data, 
             config.get(CONF_SITEID),
             config.get(CONF_NAME)
         )
     )
-    add_devices(sensors)
+    async_add_devices(sensors)
     hass.states.set('sensor.sl_active', True)
 
 class SLDepartureBoardSensor(Entity):
     """Department board for one SL site."""
 
-    def __init__(self, data, siteid, name):
+    def __init__(self, hass, data, siteid, name):
         """Initialize"""
+        self._hass = hass
         self._sensor = 'sl'
         self._siteid = siteid
         self._name = name or siteid
@@ -150,6 +144,10 @@ class SLDepartureBoardSensor(Entity):
     def update(self):
         """Get the departure board."""
 
+        if self._hass.state.get('sensor.sl_active'):
+            _LOGGER.error('SL Sensor active')
+        else:
+            _LOGGER.error('SL Sensor INactive')
         self._data.update()
 
         # @TODO Check for error message from request. 1007 - Month limit, 1006 - Minute limit.
@@ -190,8 +188,6 @@ class SlDepartureBoardData(object):
     @Throttle(UPDATE_FREQUENCY, FORCED_UPDATE_FREQUENCY)
     def update(self, **kwargs):
         """Get the latest data for this site from the API."""
-        if self.hass.state.get('sensor.sl_active'):
-            _LOGGER.error('SL Sensor active')
         try:
             _LOGGER.debug("fetching SL Data for '%s'", self._siteid)
             url = "https://api.sl.se/api2/realtimedeparturesV4.json?key={}&siteid={}". \
