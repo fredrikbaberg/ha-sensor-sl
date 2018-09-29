@@ -10,19 +10,19 @@ import logging
 from datetime import timedelta
 
 import homeassistant.helpers.config_validation as cv
-import requests
 import voluptuous as vol
 from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.event import (async_track_point_in_utc_time,
-                                         async_track_utc_time_change)
 from homeassistant.util import Throttle
-from homeassistant.util import dt as dt_util
 
-REQUIREMENTS = []
+# from homeassistant.helpers.aiohttp_client import async_get_clientsession
+# from homeassistant.helpers.event import (async_track_point_in_utc_time,
+#                                          async_track_utc_time_change)
+# from homeassistant.util import dt as dt_util
 
-__version__ = '0.0.2'
+REQUIREMENTS = ['requests']
+
+__version__ = '0.0.3'
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,6 +51,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     
        right now only one, but later there should probably be another sensor for deviations at the same site
     """
+    import requests
 
     data = SlDepartureBoardData(
         config.get(CONF_RI4_KEY),

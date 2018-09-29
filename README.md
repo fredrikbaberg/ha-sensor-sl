@@ -57,3 +57,9 @@ icon: fa-subway
 friendly_name: sl gullmarsplan
 attribution: Data from sl.se / trafiklab.se
 ```
+
+**API-call restrictions**
+
+The `Bronze` level API is limited to 30 API calls per minute, 10.000 per month.
+For a private project, `Silver` level does not seem possible.
+With 10.000 calls per month, that allows for less than one call every 4 minute.
