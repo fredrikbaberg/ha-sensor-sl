@@ -1,5 +1,5 @@
 {
-    "sensor.sl": {
+    "custom_component.sensor.sl": {
       "updated_at": "2018-09-29",
       "version": "0.0.2",
       "local_location": "/custom_components/sensor/sl.py",
