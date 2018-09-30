@@ -9,6 +9,7 @@ from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.util import Throttle
 from homeassistant.util import dt as dt_util
+from homeassistant.helpers.entity import Entity
 
 __version__ = '0.0.4'
 
@@ -171,9 +172,10 @@ class SLDepartureBoardSensor(Entity):
 
 class SlDepartureBoardData(object):
     """ Class for retrieving API data """
+    import requests
+    
     def __init__(self, apikey, siteid):
         """Initialize the data object."""
-        import requests
         self._apikey = apikey
         self._siteid = siteid
         self.data = {}
@@ -206,4 +208,4 @@ class SlDepartureBoardData(object):
                 self._siteid,
                 "HTTP Status_code = ",
                 req.status_code
-            )
+            ))
