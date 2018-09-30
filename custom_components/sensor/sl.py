@@ -43,7 +43,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Setup the sensors."""
-    import requests
 
     sensors = []
     # Raw data sensor, get data from API and use this data for "sub-sensors".
@@ -184,6 +183,8 @@ class SlDepartureBoardData(object):
     @Throttle(MIN_UPDATE_FREQUENCY)
     def update(self, **kwargs):
         """Get the latest data for this site from the API."""
+        import requests
+
         try:
             _LOGGER.info("fetching SL Data for '%s'", self._siteid)
             url = "{}{}{}{}".format(
