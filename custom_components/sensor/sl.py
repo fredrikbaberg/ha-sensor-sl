@@ -43,6 +43,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Setup the sensors."""
+    import requests
+
     sensors = []
     # Raw data sensor, get data from API and use this data for "sub-sensors".
     sensors.append(
@@ -172,8 +174,7 @@ class SLDepartureBoardSensor(Entity):
 
 class SlDepartureBoardData(object):
     """ Class for retrieving API data """
-    import requests
-    
+
     def __init__(self, apikey, siteid):
         """Initialize the data object."""
         self._apikey = apikey
