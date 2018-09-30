@@ -157,6 +157,9 @@ class SLDepartureBoardSensor(Entity):
                         direction = value['JourneyDirection'] or 0
                         displaytime = value['DisplayTime'] or ''
                         deviations = value['Deviations'] or ''
+                        _LOGGER.warn("linenumber: {}, destination: {}, direction: {}, displaytime: {}, deviations: {}".format(
+                            linenumber, destination, direction, displaytime, deviations
+                        ))
                         if (int(self._data._direction) == 0 or int(direction) == int(self._data._direction)):
                             if(self._data._lines is None or (linenumber in self._data._lines)):
                                 diff = self.parseDepartureTime(displaytime)
