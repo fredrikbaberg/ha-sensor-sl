@@ -1,8 +1,4 @@
-"""
-Simple service for SL (Storstockholms Lokaltrafik)
-
-
-"""
+"""Simple service for SL (Storstockholms Lokaltrafik)"""
 import datetime
 import logging
 from datetime import timedelta
@@ -104,15 +100,20 @@ class SLDepartureBoardSensor(Entity):
         val['departures'] = len(self._board)
 
         for departure_nr in range(0, len(self._board)):
-            val['line_{}'.format(departure_nr)] = self._board[departure_nr]['line']
-            val['destination_{}'.format(departure_nr)] = self._board[departure_nr]['destination']
-            val['departure_{}'.format(departure_nr)] = self._board[departure_nr]['departure']
+            val['line_{}'.format(departure_nr)] = \
+                self._board[departure_nr]['line']
+            val['destination_{}'.format(departure_nr)] = \
+                self._board[departure_nr]['destination']
+            val['departure_{}'.format(departure_nr)] = \
+                self._board[departure_nr]['departure']
 
         return val
 
     def parseDepartureTime(self, t):
-        """ weird time formats from the API, do some quick and dirty conversions """
-        try:        
+        """Weird time formats from the API,
+        do some quick and dirty conversions
+        """
+        try:
             if t == 'Nu':
                 return 0
             s = t.split()
@@ -122,7 +123,7 @@ class SLDepartureBoardSensor(Entity):
             if(len(s) > 1):
                 now = datetime.datetime.now()
                 min = (int(s[0])*60 + int(s[1])) - (now.hour*60 + now.minute)
-                if min < 0: 
+                if min < 0:
                     min = min + 1440
                 return min
         except Exception:
@@ -138,13 +139,16 @@ class SLDepartureBoardSensor(Entity):
             board = []
             if self._data.data['StatusCode'] != 0:
                 if not self._error_logged:
-                    _LOGGER.warn("Status code: {}, {}".format(self._data.data['StatusCode'], self._data.data['Message']))
-                    self._error_logged = True  # Only report error once, until success.
+                    _LOGGER.warn("Status code: {}, {}".format(
+                        self._data.data['StatusCode'],
+                        self._data.data['Message']
+                    ))
+                    self._error_logged = True  # Report once, until success.
             else:
                 if self._error_logged:
                     _LOGGER.warn("API call successful again")
                     self._error_logged = False  # Reset that error has been reported.
-                for i,traffictype in enumerate(['Metros','Buses','Trains','Trams', 'Ships']):
+                for i, traffictype in enumerate(['Metros', 'Buses', 'Trains', 'Trams', 'Ships']):
                     for idx, value in enumerate(self._data.data['ResponseData'][traffictype]):
                         linenumber = value['LineNumber'] or ''
                         destination = value['Destination'] or ''
