@@ -10,8 +10,9 @@ from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.util import Throttle
 from homeassistant.util import dt as dt_util
 from homeassistant.helpers.entity import Entity
+# from homeassistant.helpers.event import track_state_change
 
-__version__ = '0.0.4'
+__version__ = '0.0.5'
 
 REQUIREMENTS = ['requests']
 
@@ -19,11 +20,15 @@ _LOGGER = logging.getLogger(__name__)
 
 CONF_RI4_KEY = 'ri4key'
 CONF_SITEID = 'siteid'
-CONF_DEPARTURES = 'departures'
 CONF_NAME = 'name'
+CONF_TIME_WINDOW = 'timewindow'
+CONF_ENABLED_SENSOR = 'sensor'
+CONF_DEPARTURES = 'departures'
+CONF_SENSOR_NAME = 'sensorname'
 CONF_LINES = 'lines'
 CONF_DIRECTION = 'direction'
-CONF_ENABLED_SENSOR = 'sensor'
+
+DOMAIN = 'sl'
 
 MIN_UPDATE_FREQUENCY = timedelta(seconds=60)
 
@@ -32,11 +37,13 @@ USER_AGENT = "Home Assistant SL Sensor"
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_RI4_KEY): cv.string,
     vol.Required(CONF_SITEID): cv.string,
+    vol.Optional(CONF_NAME): cv.string,
+    vol.Optional(CONF_TIME_WINDOW, default=60): int,
+    vol.Optional(CONF_ENABLED_SENSOR): cv.string,
     vol.Optional(CONF_DEPARTURES): [{
-        vol.Optional(CONF_NAME): cv.string,
+        vol.Optional(CONF_SENSOR_NAME): cv.string,
         vol.Optional(CONF_LINES): cv.string,
-        vol.Optional(CONF_DIRECTION): cv.string,
-        vol.Optional(CONF_ENABLED_SENSOR): cv.string
+        vol.Optional(CONF_DIRECTION): cv.string
     }]
 })
 
@@ -51,13 +58,14 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             hass,
             SlDepartureBoardData(
                 config.get(CONF_RI4_KEY),
-                config.get(CONF_SITEID)
+                config.get(CONF_SITEID),
+                config.get(CONF_TIME_WINDOW)
             ),
             config,
-            config.get(CONF_NAME)+'_raw' or config.get(CONF_SITEID)+'_raw'
+            config.get(CONF_NAME) or config.get(CONF_SITEID)
         )
     )
-    add_entities(sensors)
+    add_entities(sensors, True)
 
 
 class SLDepartureBoardSensor(Entity):
@@ -67,16 +75,23 @@ class SLDepartureBoardSensor(Entity):
         """Initialize"""
         self._hass = hass
         self._sensor = 'sl'
-        self._name = name
+        self._name = name+'_raw'
         self._data = data
         self._board = []
         self._error_logged = False  # Keep track of if error has been logged.
         self._enabled_sensor = config.get(CONF_ENABLED_SENSOR)
+        self._departures = [[], []]
+        for departure in config.get(CONF_DEPARTURES):
+            lines = departure.get(CONF_LINES)
+            if lines is not None:
+                for line in lines:
+                    self._departures[0].append(line)
+            self._departures[1].append(departure.get(CONF_DIRECTION))
 
     @property
     def name(self):
         """Return the name of the sensor."""
-        return '{} {}_raw'.format(self._sensor, self._name)
+        return '{} {}'.format(self._sensor, self._name)
 
     @property
     def icon(self):
@@ -85,29 +100,27 @@ class SLDepartureBoardSensor(Entity):
 
     @property
     def state(self):
-        """ Return number of minutes to the next departure """
-        if len(self._board) > 0:
-            return self._board[0]['time']
-
-        return 9999
+        """ Return number of departures on board. """
+        return len(self._board)
 
     @property
     def device_state_attributes(self):
-        """ Return the sensor attributes ."""
+        """ Return the sensor attributes. """
 
         val = {}
         val['attribution'] = 'Data from sl.se / trafiklab.se'
         val['unit_of_measurement'] = 'departures'
 
         val['departures'] = len(self._board)
+        val['departures'] = [board for board in self._board]
 
-        for departure_nr in range(0, len(self._board)):
-            val['line_{}'.format(departure_nr)] = \
-                self._board[departure_nr]['line']
-            val['destination_{}'.format(departure_nr)] = \
-                self._board[departure_nr]['destination']
-            val['departure_{}'.format(departure_nr)] = \
-                self._board[departure_nr]['departure']
+        # for departure_nr in range(0, len(self._board)):
+        #     val['line_{}'.format(departure_nr)] = \
+        #         self._board[departure_nr]['line']
+        #     val['destination_{}'.format(departure_nr)] = \
+        #         self._board[departure_nr]['destination']
+        #     val['departure_{}'.format(departure_nr)] = \
+        #         self._board[departure_nr]['departure']
 
         return val
 
@@ -134,6 +147,7 @@ class SLDepartureBoardSensor(Entity):
 
     def update(self):
         """Get the departure board."""
+        sensor_state = None
         if self._enabled_sensor is not None:
             sensor_state = self._hass.states.get(self._enabled_sensor)
         if self._enabled_sensor is None or sensor_state.state is STATE_ON:
@@ -149,19 +163,22 @@ class SLDepartureBoardSensor(Entity):
             else:
                 if self._error_logged:
                     _LOGGER.warn("API call successful again")
-                    self._error_logged = False  # Reset that error has been reported.
-                for i, traffictype in enumerate(['Metros', 'Buses', 'Trains', 'Trams', 'Ships']):
-                    for idx, value in enumerate(self._data.data['ResponseData'][traffictype]):
+                    self._error_logged = False  # Reset error reported.
+                for i, traffictype in enumerate(
+                    ['Metros', 'Buses', 'Trains', 'Trams', 'Ships']
+                ):
+                    for idx, value in enumerate(
+                        self._data.data['ResponseData'][traffictype]
+                    ):
                         linenumber = value['LineNumber'] or ''
                         destination = value['Destination'] or ''
                         direction = value['JourneyDirection'] or 0
                         displaytime = value['DisplayTime'] or ''
                         deviations = value['Deviations'] or ''
-                        _LOGGER.warn("linenumber: {}, destination: {}, direction: {}, displaytime: {}, deviations: {}".format(
-                            linenumber, destination, direction, displaytime, deviations
-                        ))
-                        if (int(self._data._direction) == 0 or int(direction) == int(self._data._direction)):
-                            if(self._data._lines is None or (linenumber in self._data._lines)):
+                        if None in self._departures[1] or \
+                                int(direction) in self._departures[1]:
+                            if not self._departures[0] or \
+                                    linenumber in self._departures[0]:
                                 diff = self.parseDepartureTime(displaytime)
                                 board.append({
                                     "line": linenumber,
@@ -171,16 +188,19 @@ class SLDepartureBoardSensor(Entity):
                                     'deviations': deviations
                                 })
             self._board = sorted(board, key=lambda k: k['time'])
-            _LOGGER.info(self._board)
+        else:
+            self._board.clear()
+            # _LOGGER.info(self._board)
 
 
 class SlDepartureBoardData(object):
     """ Class for retrieving API data """
 
-    def __init__(self, apikey, siteid):
+    def __init__(self, apikey, siteid, timewindow):
         """Initialize the data object."""
         self._apikey = apikey
         self._siteid = siteid
+        self._timewindow = timewindow
         self.data = {}
 
     @Throttle(MIN_UPDATE_FREQUENCY)
@@ -190,11 +210,13 @@ class SlDepartureBoardData(object):
 
         try:
             _LOGGER.info("fetching SL Data for '%s'", self._siteid)
-            url = "{}{}{}{}".format(
+            url = "{}{}{}{}{}{}".format(
                 "https://api.sl.se/api2/realtimedeparturesV4.json?key=",
                 self._apikey,
                 "&siteid=",
-                self._siteid
+                self._siteid,
+                "&timewindow=",
+                self._timewindow
             )
             req = requests.get(
                 url,
