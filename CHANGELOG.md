@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog][keep-a-changelog]
 ## Unreleased
 
 - Lovelace card
+- Multi-ID
+- Raw sensordata
 
 ## [v0.0.4] (2018-09-30)
 

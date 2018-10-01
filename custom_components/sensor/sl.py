@@ -28,6 +28,9 @@ CONF_SENSOR_NAME = 'sensorname'
 CONF_LINES = 'lines'
 CONF_DIRECTION = 'direction'
 
+DEFAULT_TIME_WINDOW = 60
+DEFAULT_DEPARTURES = [{CONF_LINES: None, CONF_DIRECTION: 0}]
+
 DOMAIN = 'sl'
 
 MIN_UPDATE_FREQUENCY = timedelta(seconds=60)
@@ -38,12 +41,12 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_RI4_KEY): cv.string,
     vol.Required(CONF_SITEID): cv.string,
     vol.Optional(CONF_NAME): cv.string,
-    vol.Optional(CONF_TIME_WINDOW, default=60): int,
+    vol.Optional(CONF_TIME_WINDOW, default=DEFAULT_TIME_WINDOW): int,
     vol.Optional(CONF_ENABLED_SENSOR): cv.string,
-    vol.Optional(CONF_DEPARTURES): [{
+    vol.Optional(CONF_DEPARTURES, default=DEFAULT_DEPARTURES): [{
         vol.Optional(CONF_SENSOR_NAME): cv.string,
-        vol.Optional(CONF_LINES): cv.string,
-        vol.Optional(CONF_DIRECTION): cv.string
+        vol.Optional(CONF_LINES, default=None): cv.string,
+        vol.Optional(CONF_DIRECTION, default=0): int
     }]
 })
 
@@ -80,13 +83,12 @@ class SLDepartureBoardSensor(Entity):
         self._board = []
         self._error_logged = False  # Keep track of if error has been logged.
         self._enabled_sensor = config.get(CONF_ENABLED_SENSOR)
-        self._departures = [[], []]
+        self._departures = []
         for departure in config.get(CONF_DEPARTURES):
-            lines = departure.get(CONF_LINES)
-            if lines is not None:
-                for line in lines:
-                    self._departures[0].append(line)
-            self._departures[1].append(departure.get(CONF_DIRECTION))
+            self._departures.append([
+                departure.get(CONF_LINES),
+                departure.get(CONF_DIRECTION)
+            ])
 
     @property
     def name(self):
@@ -164,21 +166,23 @@ class SLDepartureBoardSensor(Entity):
                 if self._error_logged:
                     _LOGGER.warn("API call successful again")
                     self._error_logged = False  # Reset error reported.
-                for i, traffictype in enumerate(
-                    ['Metros', 'Buses', 'Trains', 'Trams', 'Ships']
+                for _, traffictype in enumerate(
+                        ['Metros', 'Buses', 'Trains', 'Trams', 'Ships']
                 ):
-                    for idx, value in enumerate(
-                        self._data.data['ResponseData'][traffictype]
+                    for _, value in enumerate(
+                            self._data.data['ResponseData'][traffictype]
                     ):
                         linenumber = value['LineNumber'] or ''
                         destination = value['Destination'] or ''
                         direction = value['JourneyDirection'] or 0
                         displaytime = value['DisplayTime'] or ''
                         deviations = value['Deviations'] or ''
-                        if None in self._departures[1] or \
-                                int(direction) in self._departures[1]:
-                            if not self._departures[0] or \
-                                    linenumber in self._departures[0]:
+                        for dept in self._departures:
+                            if ((dept[1] == 0) or \
+                                (direction == dept[1])) \
+                                and \
+                                ((dept[0] is None) or \
+                                (linenumber in dept[0])):
                                 diff = self.parseDepartureTime(displaytime)
                                 board.append({
                                     "line": linenumber,
@@ -187,10 +191,11 @@ class SLDepartureBoardSensor(Entity):
                                     'time': diff,
                                     'deviations': deviations
                                 })
+                                break
             self._board = sorted(board, key=lambda k: k['time'])
         else:
             self._board.clear()
-            # _LOGGER.info(self._board)
+            _LOGGER.info(self._board)
 
 
 class SlDepartureBoardData(object):

@@ -22,9 +22,12 @@ When you have your API key, you're ready to add the component to your Home Assis
   name: gullmarsplan
   ri4key: YOUR-API-KEY-HERE
   siteid: 9189
-  lines: 17, 18, 19
-  direction: 1
+  timewindow: 60
   sensor: binary_sensor.test
+  departures:
+    - sensorname: sensor_name
+      lines: 17, 18, 19
+      direction: 1
 ```
 
 
@@ -37,15 +40,36 @@ When you have your API key, you're ready to add the component to your Home Assis
 
 - siteid: The ID of the bus stop or station you want to monitor.  You can find the ID with some help from another API, **sl-platsuppslag**.  In the example above, site 9189 is Gullmarsplan.
 
-- lines: (optional) A comma separated list of line numbers that you are interested in. Most likely, you only want info on the bus that you usually ride.  If omitted, all lines at the specified site id will be included.  In the example above, lines 17, 18 and 19 will be included.
-
-- direction: (optional) Unless your site id happens to be the end of the line, buses and trains goes in both directions.  You can enter **1** or **2**.  If omitted, both directions are included. 
+- timewindow (optional): Time window for departures, number of minutes from now. Maximum (default) is 60 minutes.
 
 - sensor: (optional) Sensor to determine if status should be updated. If sensor is 'on', or if this option is not set, update will be done.
 
+- departures (optional): Add details to departures here, for instance separated by different lines.
+
+  - sensorname: (optional) Name of sensor to use to enable/disable calling sensor. Should be input_boolean or similar (using 'on'/'off' state). If 'off', all data will be cleared and API should not be called.
+
+  - lines: (optional) A comma separated list of line numbers that you are interested in. Most likely, you only want info on the bus that you usually ride.  If omitted, all lines at the specified site id will be included.  In the example above, lines 17, 18 and 19 will be included.
+
+  - direction: (optional) Unless your site id happens to be the end of the line, buses and trains goes in both directions.  You can enter **1** or **2**.  If omitted, both directions are included.
+
 **sensor value**
 
-The sensor value is the number of minutes to the next departure.  There are also a number of attributes:
+The sensor value is the number of departures, attributes are details for each departure according to:
+```
+"attribution": "Data from sl.se / trafiklab.se",
+"unit_of_measurement": "departures",
+"friendly_name": "sl sensorname_raw",
+"icon": "fa-subway"
+"departures": [
+  "line": "163",
+  "departure": "Nu",
+  "destination": "Kärrtorp",
+  "time": 0,
+  "deviations": ""
+]
+```
+
+<!-- The sensor value is the number of minutes to the next departure.  There are also a number of attributes:
 
 ```
 next_departure: 1 min
@@ -58,7 +82,7 @@ unit_of_measurement: min
 icon: fa-subway
 friendly_name: sl gullmarsplan
 attribution: Data from sl.se / trafiklab.se
-```
+``` -->
 
 **API-call restrictions**
 
@@ -81,7 +105,7 @@ custom_updater:
 
 **Lovelace card**
 
-To display data using Lovelace, you can try the included card.
+To display data using Lovelace, you can try the included card (*NOT* updated to work with multi-departure changes!).
 
 Present departure times from custom component SL-sensor in a card. Can use multiple sensors, will show next and upcoming departure for each sensor.
 
