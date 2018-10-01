@@ -6,11 +6,11 @@ from datetime import timedelta
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.const import STATE_OFF, STATE_ON
+from homeassistant.const import STATE_ON
 from homeassistant.util import Throttle
-from homeassistant.util import dt as dt_util
+# from homeassistant.util import dt as dt_util
 from homeassistant.helpers.entity import Entity
-# from homeassistant.helpers.event import track_state_change
+from homeassistant.helpers.event import track_state_change
 
 __version__ = '0.0.5'
 
@@ -56,6 +56,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
     sensors = []
     # Raw data sensor, get data from API and use this data for "sub-sensors".
+    raw_sensor_name = config.get(CONF_NAME) or config.get(CONF_SITEID)
     sensors.append(
         SLDepartureBoardSensor(
             hass,
@@ -65,11 +66,30 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 config.get(CONF_TIME_WINDOW)
             ),
             config,
-            config.get(CONF_NAME) or config.get(CONF_SITEID)
+            raw_sensor_name
         )
     )
+    
+    for departure in config.get(CONF_DEPARTURES):
+        newsensor = SlDepartureSensor(hass, raw_sensor_name, config)
+        # sensors.append(newsensor)
     add_entities(sensors, True)
 
+
+class SlDepartureSensor(Entity):
+    """Sensor to be updated when 'raw' data sensor has been updated."""
+    def __init__(self, hass, data, config, raw_name):
+        self._data = None
+        def update_data(entity, old_state, new_state):
+            """ Called when the target device changes state. """
+            self._data = new_state
+            self.update_ha_state(True)
+        track_state_change(hass, raw_name, update_data)
+
+    @property
+    def should_poll(self):
+        """No polling needed."""
+        return False
 
 class SLDepartureBoardSensor(Entity):
     """Departure board for one SL site."""
@@ -178,11 +198,11 @@ class SLDepartureBoardSensor(Entity):
                         displaytime = value['DisplayTime'] or ''
                         deviations = value['Deviations'] or ''
                         for dept in self._departures:
-                            if ((dept[1] == 0) or \
+                            if ((dept[1] == 0) or
                                 (direction == dept[1])) \
                                 and \
-                                ((dept[0] is None) or \
-                                (linenumber in dept[0])):
+                                ((dept[0] is None) or
+                                 (linenumber in dept[0])):
                                 diff = self.parseDepartureTime(displaytime)
                                 board.append({
                                     "line": linenumber,
