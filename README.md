@@ -3,6 +3,8 @@ SL sensor for Home Assistant
 
 **This is a fork of fuffenz SL sensor (https://github.com/fuffenz/ha-sensor-sl).**
 
+**I'm archiving this, since I'm not actively working on it. Have a look at this fork instead: https://github.com/DSorlov/ha-sensor-sl**
+
 This is a simple component for Home Assistant that can be used to create a "Departure board" for buses and trains in Stockholm, Sweden.  You have to install it as a custom component and you need to get your own API key from SL / Trafiklab.
 
 - First, visit [https://www.trafiklab.se/api](https://www.trafiklab.se/api) and create a free account. They provide multiple APIs, the one you want is ["SL Trafikinformation 4"](https://www.trafiklab.se/api/sl-realtidsinformation-4).  
